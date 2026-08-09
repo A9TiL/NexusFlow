@@ -5,6 +5,8 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.prebuilt import create_react_agent
 from app.db.session import SessionLocal
 from app.tools.database_tools import get_server_status, get_network_logs, create_support_ticket
+from pydantic import BaseModel, Field
+
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 ENV_PATH = os.path.join(BASE_DIR, ".env")
@@ -15,7 +17,19 @@ if not api_key:
     raise ValueError("Missing GEMINI_API_KEY in .env file.")
 
 
-@tool
+class ServerStatusInput(BaseModel):
+    node_id: int = Field(description="The numeric ID of the server node (e.g., 1, 12, 14)")
+
+class NetworkLogsInput(BaseModel):
+    node_id: int = Field(description="The numeric ID of the server node")
+    limit: int = Field(default=5, description="Number of recent log entries to retrieve")
+
+class SupportTicketInput(BaseModel):
+    node_id: int = Field(description="The numeric ID of the degraded server node")
+    issue: str = Field(description="Clear description of the detected issue")
+    priority: str = Field(description="Ticket priority level: 'Low', 'Medium', or 'High'")
+
+@tool (args_schema=ServerStatusInput)
 def tool_get_server_status(node_id: int) -> dict:
     """Fetches the current status and region of a specific server node."""
     db = SessionLocal()
@@ -24,7 +38,7 @@ def tool_get_server_status(node_id: int) -> dict:
     finally:
         db.close()
 
-@tool
+@tool (args_schema=NetworkLogsInput)
 def tool_get_network_logs(node_id: int, limit: int = 5) -> list:
     """Retrieves recent diagnostic logs for a server node to check for latency or errors."""
     db = SessionLocal()
