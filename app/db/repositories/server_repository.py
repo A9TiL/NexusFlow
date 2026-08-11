@@ -88,7 +88,11 @@ class ServerRepository:
                 "dependent network logs or support tickets exist."
             )
 
-        self.db.delete(server)
-        self.db.commit()
+        try:
+            self.db.delete(server)
+            self.db.commit()
+        except Exception:
+            self.db.rollback()
+            raise
 
         return server

@@ -110,7 +110,13 @@ def delete_server(
 
     repository = ServerRepository(db)
 
-    node = repository.delete(request.node_id)
+    try:
+        node = repository.delete(request.node_id)
+
+    except ValueError as exc:
+        return {
+            "error": str(exc)
+        }
 
     if not node:
         return {

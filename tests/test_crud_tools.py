@@ -362,3 +362,33 @@ def test_delete_missing_ticket(db_session):
     )
 
     assert "error" in result
+    
+def test_delete_server_with_dependencies_is_rejected(db_session):
+    server = create_server(
+        db=db_session,
+        ip_address="192.168.110.1",
+        region="AP-South",
+        status="Failing",
+    )
+
+    create_network_log(
+        db=db_session,
+        node_id=server["node_id"],
+        error_code="ERR-500",
+        latency=600,
+    )
+
+    result = delete_server(
+        db=db_session,
+        node_id=server["node_id"],
+    )
+
+    assert "error" in result
+    assert "dependent" in result["error"]
+
+    lookup = get_server_status(
+        db=db_session,
+        node_id=server["node_id"],
+    )
+
+    assert lookup["node_id"] == server["node_id"]
