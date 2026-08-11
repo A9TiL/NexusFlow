@@ -7,7 +7,17 @@ from app.db.repositories.support_ticket_repository import (
 )
 
 
-
+from app.core.schemas import (
+    ServerCreateRequest,
+    ServerUpdateRequest,
+    ServerDeleteRequest,
+    NetworkLogCreateRequest,
+    NetworkLogUpdateRequest,
+    NetworkLogDeleteRequest,
+    SupportTicketCreateRequest,
+    SupportTicketUpdateRequest,
+    SupportTicketDeleteRequest,
+)
 
 def get_server_status(db: Session, node_id: int) -> dict:
     """
@@ -37,16 +47,19 @@ def create_server(
     region: str,
     status: str,
 ) -> dict:
-    """
-    Create a new server node.
-    """
+
+    request = ServerCreateRequest(
+        ip_address=ip_address,
+        region=region,
+        status=status,
+    )
 
     repository = ServerRepository(db)
 
     node = repository.create(
-        ip_address=ip_address,
-        region=region,
-        status=status,
+        ip_address=request.ip_address,
+        region=request.region,
+        status=request.status.value,
     )
 
     return {
@@ -57,26 +70,27 @@ def create_server(
         "status": node.status,
     }
 
-
 def update_server_status(
     db: Session,
     node_id: int,
     status: str,
 ) -> dict:
-    """
-    Update the operational status of a server node.
-    """
 
-    repository = ServerRepository(db)
-
-    node = repository.update_status(
+    request = ServerUpdateRequest(
         node_id=node_id,
         status=status,
     )
 
+    repository = ServerRepository(db)
+
+    node = repository.update_status(
+        node_id=request.node_id,
+        status=request.status.value,
+    )
+
     if not node:
         return {
-            "error": f"Node {node_id} not found in the database."
+            "error": f"Node {request.node_id} not found in the database."
         }
 
     return {
@@ -85,29 +99,28 @@ def update_server_status(
         "status": node.status,
     }
 
-
 def delete_server(
     db: Session,
     node_id: int,
 ) -> dict:
-    """
-    Delete a server node.
-    """
+
+    request = ServerDeleteRequest(
+        node_id=node_id,
+    )
 
     repository = ServerRepository(db)
 
-    node = repository.delete(node_id)
+    node = repository.delete(request.node_id)
 
     if not node:
         return {
-            "error": f"Node {node_id} not found in the database."
+            "error": f"Node {request.node_id} not found in the database."
         }
 
     return {
         "message": "Server deleted successfully",
         "node_id": node.node_id,
     }
-
 
 
 
@@ -153,16 +166,19 @@ def create_network_log(
     error_code: str | None,
     latency: float,
 ) -> dict:
-    """
-    Create a diagnostic network log.
-    """
+
+    request = NetworkLogCreateRequest(
+        node_id=node_id,
+        error_code=error_code,
+        latency=latency,
+    )
 
     repository = NetworkLogRepository(db)
 
     log = repository.create(
-        node_id=node_id,
-        error_code=error_code,
-        latency=latency,
+        node_id=request.node_id,
+        error_code=request.error_code,
+        latency=request.latency,
     )
 
     return {
@@ -181,21 +197,24 @@ def update_network_log(
     error_code: str | None = None,
     latency: float | None = None,
 ) -> dict:
-    """
-    Update a network log.
-    """
 
-    repository = NetworkLogRepository(db)
-
-    log = repository.update(
+    request = NetworkLogUpdateRequest(
         log_id=log_id,
         error_code=error_code,
         latency=latency,
     )
 
+    repository = NetworkLogRepository(db)
+
+    log = repository.update(
+        log_id=request.log_id,
+        error_code=request.error_code,
+        latency=request.latency,
+    )
+
     if not log:
         return {
-            "error": f"Network log {log_id} not found."
+            "error": f"Network log {request.log_id} not found."
         }
 
     return {
@@ -210,17 +229,18 @@ def delete_network_log(
     db: Session,
     log_id: int,
 ) -> dict:
-    """
-    Delete a network log.
-    """
+
+    request = NetworkLogDeleteRequest(
+        log_id=log_id,
+    )
 
     repository = NetworkLogRepository(db)
 
-    log = repository.delete(log_id)
+    log = repository.delete(request.log_id)
 
     if not log:
         return {
-            "error": f"Network log {log_id} not found."
+            "error": f"Network log {request.log_id} not found."
         }
 
     return {
@@ -237,20 +257,19 @@ def create_support_ticket(
     issue: str,
     priority: str,
 ) -> dict:
-    """
-    Create a support ticket.
 
-    NOTE:
-    HITL approval will be introduced above this operation.
-    This function itself remains a deterministic database operation.
-    """
+    request = SupportTicketCreateRequest(
+        node_id=node_id,
+        issue=issue,
+        priority=priority,
+    )
 
     repository = SupportTicketRepository(db)
 
     ticket = repository.create(
-        node_id=node_id,
-        issue_description=issue,
-        priority=priority,
+        node_id=request.node_id,
+        issue_description=request.issue,
+        priority=request.priority.value,
     )
 
     return {
@@ -293,22 +312,34 @@ def update_support_ticket(
     priority: str | None = None,
     status: str | None = None,
 ) -> dict:
-    """
-    Update a support ticket.
-    """
 
-    repository = SupportTicketRepository(db)
-
-    ticket = repository.update(
+    request = SupportTicketUpdateRequest(
         ticket_id=ticket_id,
-        issue_description=issue,
+        issue=issue,
         priority=priority,
         status=status,
     )
 
+    repository = SupportTicketRepository(db)
+
+    ticket = repository.update(
+        ticket_id=request.ticket_id,
+        issue_description=request.issue,
+        priority=(
+            request.priority.value
+            if request.priority is not None
+            else None
+        ),
+        status=(
+            request.status.value
+            if request.status is not None
+            else None
+        ),
+    )
+
     if not ticket:
         return {
-            "error": f"Ticket {ticket_id} not found."
+            "error": f"Ticket {request.ticket_id} not found."
         }
 
     return {
@@ -324,17 +355,18 @@ def delete_support_ticket(
     db: Session,
     ticket_id: int,
 ) -> dict:
-    """
-    Delete a support ticket.
-    """
+
+    request = SupportTicketDeleteRequest(
+        ticket_id=ticket_id,
+    )
 
     repository = SupportTicketRepository(db)
 
-    ticket = repository.delete(ticket_id)
+    ticket = repository.delete(request.ticket_id)
 
     if not ticket:
         return {
-            "error": f"Ticket {ticket_id} not found."
+            "error": f"Ticket {request.ticket_id} not found."
         }
 
     return {

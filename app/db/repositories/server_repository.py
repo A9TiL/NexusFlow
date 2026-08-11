@@ -1,6 +1,10 @@
 from sqlalchemy.orm import Session
 
-from app.db.models import ServerNode
+from app.db.models import (
+    ServerNode,
+    NetworkLog,
+    SupportTicket,
+)
 
 
 class ServerRepository:
@@ -63,6 +67,26 @@ class ServerRepository:
 
         if not server:
             return None
+
+        has_logs = (
+            self.db.query(NetworkLog)
+            .filter(NetworkLog.node_id == node_id)
+            .first()
+            is not None
+        )
+
+        has_tickets = (
+            self.db.query(SupportTicket)
+            .filter(SupportTicket.node_id == node_id)
+            .first()
+            is not None
+        )
+
+        if has_logs or has_tickets:
+            raise ValueError(
+                f"ServerNode {node_id} cannot be deleted because "
+                "dependent network logs or support tickets exist."
+            )
 
         self.db.delete(server)
         self.db.commit()
