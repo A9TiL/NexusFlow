@@ -26,6 +26,10 @@ class OperationType(str, Enum):
     UPDATE = "UPDATE"
     DELETE = "DELETE"
 
+class UserRole(str, Enum):
+    READ_ONLY = "READ_ONLY"
+    OPERATOR = "OPERATOR"
+    ADMIN = "ADMIN"
 
 class ApprovalStatus(str, Enum):
     PENDING = "PENDING"
