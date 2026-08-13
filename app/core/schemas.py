@@ -1,5 +1,4 @@
 from pydantic import BaseModel, Field
-
 from app.core.enums import (
     ServerStatus,
     TicketPriority,
@@ -69,3 +68,8 @@ class SupportTicketUpdateRequest(BaseModel):
 
 class SupportTicketDeleteRequest(BaseModel):
     ticket_id: int = Field(gt=0)
+
+
+class ApprovalDecisionRequest(BaseModel):
+    decided_by: str
+    reason: str | None = None

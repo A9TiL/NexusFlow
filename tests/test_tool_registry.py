@@ -400,3 +400,125 @@ def test_real_delete_tool_is_governed_with_approval():
 
     assert tool.operation == OperationType.DELETE
     assert tool.requires_approval is True
+    
+def test_approved_mutation_executes():
+
+    from app.core.enums import UserRole
+    from app.tools.registry import ToolRegistry
+
+    registry = ToolRegistry()
+
+    execution_count = {"value": 0}
+
+    def mutation_tool():
+        execution_count["value"] += 1
+        return {"message": "mutation executed"}
+
+    registry.register(
+        mutation_tool,
+        name="create_server",
+    )
+
+    decision = registry.execute_approved(
+        tool_name="create_server",
+        role=UserRole.OPERATOR,
+    )
+
+    assert decision.approved is True
+    assert decision.requires_approval is True
+    assert decision.executed is True
+    assert decision.result == {
+        "message": "mutation executed"
+    }
+
+    assert execution_count["value"] == 1    
+    
+def test_approved_mutation_still_requires_authorization():
+
+    from app.core.enums import UserRole
+    from app.tools.registry import ToolRegistry
+
+    registry = ToolRegistry()
+
+    execution_count = {"value": 0}
+
+    def delete_tool():
+        execution_count["value"] += 1
+        return {"message": "deleted"}
+
+    registry.register(
+        delete_tool,
+        name="delete_server",
+    )
+
+    with pytest.raises(PermissionError):
+
+        registry.execute_approved(
+            tool_name="delete_server",
+            role=UserRole.OPERATOR,
+        )
+
+    assert execution_count["value"] == 0
+    
+def test_approved_execution_rejects_read_tool():
+
+    from app.core.enums import UserRole
+    from app.tools.registry import ToolRegistry
+
+    registry = ToolRegistry()
+
+    def read_tool():
+        return {"status": "Active"}
+
+    registry.register(
+        read_tool,
+        name="get_server_status",
+    )
+
+    with pytest.raises(ValueError):
+
+        registry.execute_approved(
+            tool_name="get_server_status",
+            role=UserRole.READ_ONLY,
+        )
+        
+def test_approved_execution_rejects_unknown_tool():
+
+    from app.core.enums import UserRole
+    from app.tools.registry import ToolRegistry
+
+    registry = ToolRegistry()
+
+    with pytest.raises(KeyError):
+
+        registry.execute_approved(
+            tool_name="destroy_everything",
+            role=UserRole.ADMIN,
+        )
+        
+def test_normal_execute_still_blocks_mutation_after_approved_path_added():
+
+    from app.core.enums import UserRole
+    from app.tools.registry import ToolRegistry
+
+    registry = ToolRegistry()
+
+    execution_count = {"value": 0}
+
+    def mutation_tool():
+        execution_count["value"] += 1
+        return {"message": "mutation executed"}
+
+    registry.register(
+        mutation_tool,
+        name="create_server",
+    )
+
+    decision = registry.execute(
+        tool_name="create_server",
+        role=UserRole.OPERATOR,
+    )
+
+    assert decision.approval_required is True
+    assert decision.executed is False
+    assert execution_count["value"] == 0

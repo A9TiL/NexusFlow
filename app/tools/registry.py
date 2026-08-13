@@ -185,6 +185,42 @@ class ToolRegistry:
             result=result,
         )
 
+    def execute_approved(
+    self,
+    tool_name: str,
+    role: UserRole,
+    **kwargs: Any,) -> ToolExecutionDecision:
+        """
+        Execute a mutation that has already passed the HITL approval stage.
+
+        This method is intended for the workflow-resume path only.
+
+        It still performs tool lookup and authorization, but it does not
+        apply the normal "requires approval" block because approval has
+        already been established by the HITL workflow.
+        """
+
+        tool = self.authorize(
+            tool_name=tool_name,
+            role=role,
+        )
+
+        if not tool.requires_approval:
+            raise ValueError(
+                f"Tool does not require approval: {tool_name}"
+            )
+
+        result = tool.function(**kwargs)
+
+        return ToolExecutionDecision(
+            tool_name=tool.name,
+            operation=tool.operation,
+            approved=True,
+            requires_approval=True,
+            executed=True,
+            result=result,
+        )
+    
     def validate(self) -> None:
         """
         Validate registry consistency.
